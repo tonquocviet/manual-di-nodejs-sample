@@ -11,7 +11,8 @@ Sau khi đọc và chạy repo, bạn sẽ thấy rõ:
 3. Business logic phụ thuộc vào abstraction thay vì implementation cụ thể.
 4. Composition Root chịu trách nhiệm tạo và kết nối object.
 5. Unit test có thể inject dependency giả mà không cần database thật.
-6. Vì sao một IoC Container như InversifyJS có thể hữu ích khi dependency graph lớn lên.
+6. Dependency giữ resource bên ngoài cần được giải phóng khi ứng dụng dừng.
+7. Vì sao một IoC Container như InversifyJS có thể hữu ích khi dependency graph lớn lên.
 
 ## Dependency graph
 
@@ -30,7 +31,12 @@ Database
 
 Composition Root tạo toàn bộ object:
 
+Shared dependencies:
 ConsoleLogger
+MockDatabase
+MockRedisClient
+
+User dependencies:
 MockDatabase
         ↓
 InMemoryUserRepository
@@ -38,6 +44,11 @@ InMemoryUserRepository
 UserService
         ↓
 UserController
+
+Lifecycle:
+MockRedisClient
+        ↓
+disposables
 ```
 
 ## Cấu trúc thư mục
@@ -55,9 +66,14 @@ src/
 │   ├── shared-dependencies.ts
 │   └── user-dependencies.ts
 ├── infrastructure/
+│   ├── cache/
+│   │   ├── RedisClient.ts
+│   │   └── MockRedisClient.ts
 │   ├── database/
 │   │   ├── Database.ts
 │   │   └── MockDatabase.ts
+│   ├── lifecycle/
+│   │   └── Disposable.ts
 │   ├── logging/
 │   │   └── ConsoleLogger.ts
 │   └── repositories/
@@ -123,6 +139,10 @@ Dependency được chia theo module composition:
 // composition/shared-dependencies.ts
 const logger = new ConsoleLogger();
 const database = new MockDatabase();
+const redisClient = new MockRedisClient();
+const disposables = [
+  redisClient
+];
 
 // composition/user-dependencies.ts
 const userRepository = new InMemoryUserRepository(database);
@@ -145,6 +165,56 @@ return {
   ...sharedDependencies,
   ...userDependencies
 };
+```
+
+## Giải phóng dependency khi ứng dụng dừng
+
+Dependency như Redis, PostgreSQL, message queue, scheduler hoặc HTTP client pool thường giữ connection/resource bên ngoài.
+
+Dependency nào cần cleanup có thể implement `Disposable`:
+
+```ts
+export interface Disposable {
+  dispose(): Promise<void>;
+}
+```
+
+Ví dụ `MockRedisClient` có `dispose()`:
+
+```ts
+async dispose(): Promise<void> {
+  this.values.clear();
+  this.disposed = true;
+}
+```
+
+`shared-dependencies.ts` gom các dependency cần cleanup vào `disposables`:
+
+```ts
+const redisClient = new MockRedisClient();
+
+const disposables = [
+  redisClient
+];
+```
+
+`server.ts` bắt signal khi Node.js process dừng:
+
+```ts
+process.once("SIGINT", () => {
+  void shutdown("SIGINT");
+});
+
+process.once("SIGTERM", () => {
+  void shutdown("SIGTERM");
+});
+```
+
+Trong `shutdown()`, server ngừng nhận request mới rồi gọi:
+
+```ts
+await closeServer();
+await disposeAll(disposables);
 ```
 
 ## Vì sao interface được đặt trong application/ports?
