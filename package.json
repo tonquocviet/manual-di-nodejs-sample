@@ -1,0 +1,23 @@
+{
+  "name": "manual-di-nodejs-sample",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small Node.js + TypeScript project demonstrating manual Dependency Injection without a DI container.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest run --pool=forks --maxWorkers=1 --minWorkers=1"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
