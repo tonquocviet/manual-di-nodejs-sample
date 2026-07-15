@@ -3,27 +3,27 @@ import type {
   CreateUserInput,
   UserRepository
 } from "../../application/ports/UserRepository.js";
+import type { Database } from "../database/Database.js";
+
+const USERS_COLLECTION = "users";
 
 export class InMemoryUserRepository implements UserRepository {
-  private readonly users = new Map<string, User>();
+  constructor(private readonly database: Database) {}
 
   async create(input: CreateUserInput): Promise<User> {
-    const user: User = { ...input };
-    this.users.set(user.id, user);
-    return user;
+    return this.database.insert<User>(USERS_COLLECTION, {
+      ...input
+    });
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.users.get(id) ?? null;
+    return this.database.findById<User>(USERS_COLLECTION, id);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    for (const user of this.users.values()) {
-      if (user.email === email) {
-        return user;
-      }
-    }
-
-    return null;
+    return this.database.findOne<User>(
+      USERS_COLLECTION,
+      (user) => user.email === email
+    );
   }
 }

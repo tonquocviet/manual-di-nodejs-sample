@@ -1,4 +1,5 @@
 import { ConsoleLogger } from "./infrastructure/logging/ConsoleLogger.js";
+import { MockDatabase } from "./infrastructure/database/MockDatabase.js";
 import { InMemoryUserRepository } from "./infrastructure/repositories/InMemoryUserRepository.js";
 import { UserService } from "./application/UserService.js";
 import { UserController } from "./presentation/UserController.js";
@@ -14,7 +15,9 @@ import { UserController } from "./presentation/UserController.js";
 export function createApplicationDependencies() {
   const logger = new ConsoleLogger();
 
-  const userRepository = new InMemoryUserRepository();
+  const database = new MockDatabase();
+
+  const userRepository = new InMemoryUserRepository(database);
 
   const userService = new UserService(
     userRepository,
@@ -24,6 +27,7 @@ export function createApplicationDependencies() {
   const userController = new UserController(userService);
 
   return {
+    database,
     logger,
     userRepository,
     userService,

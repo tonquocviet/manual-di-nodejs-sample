@@ -24,9 +24,15 @@ UserService
     ├── UserRepository
     └── Logger
 
+UserRepository
+    ↓
+Database
+
 Composition Root tạo toàn bộ object:
 
 ConsoleLogger
+MockDatabase
+        ↓
 InMemoryUserRepository
         ↓
 UserService
@@ -46,6 +52,9 @@ src/
 ├── domain/
 │   └── User.ts
 ├── infrastructure/
+│   ├── database/
+│   │   ├── Database.ts
+│   │   └── MockDatabase.ts
 │   ├── logging/
 │   │   └── ConsoleLogger.ts
 │   └── repositories/
@@ -109,7 +118,8 @@ Dependency được tạo tại `composition-root.ts`:
 
 ```ts
 const logger = new ConsoleLogger();
-const userRepository = new InMemoryUserRepository();
+const database = new MockDatabase();
+const userRepository = new InMemoryUserRepository(database);
 
 const userService = new UserService(
   userRepository,
