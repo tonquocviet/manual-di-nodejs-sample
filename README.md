@@ -86,6 +86,41 @@ NotificationChannel[]
 
 để gửi notification qua nhiều channel.
 
+### 6. Decorator Pattern Kết Hợp DI
+
+Decorator nhận một dependency gốc, bọc nó lại, thêm chức năng mới, nhưng vẫn giữ cùng interface để code đang dùng dependency đó không cần thay đổi.
+
+Ví dụ:
+
+```text
+src/infrastructure/repositories/CachedUserRepository.ts
+```
+
+`CachedUserRepository` implement `UserRepository`, nhưng bên trong nhận thêm:
+
+```ts
+innerRepository: UserRepository
+redisClient: RedisClient
+```
+
+Nó decorate repository thật bằng cache Redis:
+
+```text
+UserService
+    ↓
+UserRepository interface
+    ↓
+CachedUserRepository
+    ↓
+InMemoryUserRepository
+```
+
+Composition lắp decorator tại:
+
+```text
+src/composition/user-dependencies.ts
+```
+
 ## Composition Root
 
 Dependency graph được tạo thủ công trong composition layer.
@@ -113,6 +148,7 @@ const userDependencies = createUserDependencies(sharedDependencies);
 `user-dependencies.ts` tạo dependency riêng của user module:
 
 - `InMemoryUserRepository`
+- `CachedUserRepository`
 - `UserService`
 - `UserController`
 
