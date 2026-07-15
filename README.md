@@ -1,6 +1,6 @@
 # Manual DI Node.js Sample
 
-Dự án này minh họa cách dùng Dependency Injection thủ công trong Node.js + TypeScript, không dùng DI container.
+Minh họa cách dùng Dependency Injection thủ công trong Node.js + TypeScript, không dùng DI container.
 
 ## Những gì đã thể hiện
 
@@ -121,7 +121,7 @@ Composition lắp decorator tại:
 src/composition/user-dependencies.ts
 ```
 
-## Composition Root
+### 7. Composition Root
 
 Dependency graph được tạo thủ công trong composition layer.
 
@@ -152,7 +152,7 @@ const userDependencies = createUserDependencies(sharedDependencies);
 - `UserService`
 - `UserController`
 
-## DI Lifecycle Và Resource Cleanup
+### 8. DI Lifecycle Và Resource Cleanup
 
 Một số dependency chỉ là object trong memory, không cần cleanup thủ công.
 
