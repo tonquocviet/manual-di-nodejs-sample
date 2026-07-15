@@ -51,6 +51,9 @@ src/
 │   └── UserService.ts
 ├── domain/
 │   └── User.ts
+├── composition/
+│   ├── shared-dependencies.ts
+│   └── user-dependencies.ts
 ├── infrastructure/
 │   ├── database/
 │   │   ├── Database.ts
@@ -114,11 +117,14 @@ constructor(
 ) {}
 ```
 
-Dependency được tạo tại `composition-root.ts`:
+Dependency được chia theo module composition:
 
 ```ts
+// composition/shared-dependencies.ts
 const logger = new ConsoleLogger();
 const database = new MockDatabase();
+
+// composition/user-dependencies.ts
 const userRepository = new InMemoryUserRepository(database);
 
 const userService = new UserService(
@@ -127,6 +133,18 @@ const userService = new UserService(
 );
 
 const userController = new UserController(userService);
+```
+
+`composition-root.ts` chỉ gom các nhóm dependency lại:
+
+```ts
+const sharedDependencies = createSharedDependencies();
+const userDependencies = createUserDependencies(sharedDependencies);
+
+return {
+  ...sharedDependencies,
+  ...userDependencies
+};
 ```
 
 ## Vì sao interface được đặt trong application/ports?

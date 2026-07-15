@@ -1,8 +1,5 @@
-import { ConsoleLogger } from "./infrastructure/logging/ConsoleLogger.js";
-import { MockDatabase } from "./infrastructure/database/MockDatabase.js";
-import { InMemoryUserRepository } from "./infrastructure/repositories/InMemoryUserRepository.js";
-import { UserService } from "./application/UserService.js";
-import { UserController } from "./presentation/UserController.js";
+import { createSharedDependencies } from "./composition/shared-dependencies.js";
+import { createUserDependencies } from "./composition/user-dependencies.js";
 
 /**
  * Composition Root
@@ -13,24 +10,11 @@ import { UserController } from "./presentation/UserController.js";
  * - Xây dựng object graph của ứng dụng
  */
 export function createApplicationDependencies() {
-  const logger = new ConsoleLogger();
-
-  const database = new MockDatabase();
-
-  const userRepository = new InMemoryUserRepository(database);
-
-  const userService = new UserService(
-    userRepository,
-    logger
-  );
-
-  const userController = new UserController(userService);
+  const sharedDependencies = createSharedDependencies();
+  const userDependencies = createUserDependencies(sharedDependencies);
 
   return {
-    database,
-    logger,
-    userRepository,
-    userService,
-    userController
+    ...sharedDependencies,
+    ...userDependencies
   };
 }
