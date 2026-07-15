@@ -1,90 +1,205 @@
-# Manual Dependency Injection với Node.js và TypeScript
+# Manual DI Node.js Sample
 
-Repo này minh họa cách áp dụng **Dependency Injection thủ công**, không sử dụng InversifyJS hay bất kỳ DI Container nào.
+Dự án này minh họa cách dùng Dependency Injection thủ công trong Node.js + TypeScript, không dùng DI container.
 
-## Mục tiêu
+## Những gì đã thể hiện
 
-Sau khi đọc và chạy repo, bạn sẽ thấy rõ:
+### 1. Constructor Injection
 
-1. Dependency là gì.
-2. Constructor Injection hoạt động như thế nào.
-3. Business logic phụ thuộc vào abstraction thay vì implementation cụ thể.
-4. Composition Root chịu trách nhiệm tạo và kết nối object.
-5. Unit test có thể inject dependency giả mà không cần database thật.
-6. Dependency giữ resource bên ngoài cần được giải phóng khi ứng dụng dừng.
-7. Vì sao một IoC Container như InversifyJS có thể hữu ích khi dependency graph lớn lên.
+`UserService` nhận dependency qua constructor:
 
-## Dependency graph
+- `UserRepository`
+- `Logger`
+
+Xem tại:
 
 ```text
-Express route
-    ↓
-UserController
-    ↓
-UserService
-    ├── UserRepository
-    └── Logger
-
-UserRepository
-    ↓
-Database
-
-Composition Root tạo toàn bộ object:
-
-Shared dependencies:
-ConsoleLogger
-MockDatabase
-MockRedisClient
-
-User dependencies:
-MockDatabase
-        ↓
-InMemoryUserRepository
-        ↓
-UserService
-        ↓
-UserController
-
-Lifecycle:
-MockRedisClient
-        ↓
-disposables
+src/application/UserService.ts
+src/composition/user-dependencies.ts
 ```
 
-## Cấu trúc thư mục
+`InMemoryUserRepository` cũng nhận `Database` qua constructor:
+
+```text
+src/infrastructure/repositories/InMemoryUserRepository.ts
+```
+
+Ý nghĩa: class không tự `new` dependency bên trong, dependency được tạo từ bên ngoài rồi truyền vào.
+
+### 2. Method Injection
+
+Dependency được truyền trực tiếp vào method khi gọi.
+
+Ví dụ:
+
+```text
+src/examples/method-injection/UserExportService.ts
+```
+
+`UserExportService` nhận repository qua constructor, nhưng nhận `Logger` qua method `exportUsers(logger)`.
+
+### 3. Factory Injection
+
+Thay vì inject một repository cụ thể, service nhận một factory function để tạo repository khi cần.
+
+Ví dụ:
+
+```text
+src/examples/factory-injection/TenantUserReportService.ts
+```
+
+`TenantUserReportService` nhận:
+
+```ts
+TenantUserRepositoryFactory
+```
+
+rồi tạo repository theo `tenantId` trong `buildReport()`.
+
+### 4. Higher-Order Function Injection
+
+Dependencies được inject vào một function, function đó trả về một function nghiệp vụ đã được cấu hình sẵn.
+
+Ví dụ:
+
+```text
+src/examples/higher-order-function-injection/SendInactiveUserDigest.ts
+```
+
+`createSendInactiveUserDigest(dependencies)` trả về function `sendInactiveUserDigest(daysInactive)`.
+
+### 5. Inject Collection
+
+Inject nhiều implementation cùng chung interface vào một service.
+
+Ví dụ:
+
+```text
+src/examples/inject-collection/NotificationService.ts
+```
+
+`NotificationService` nhận:
+
+```ts
+NotificationChannel[]
+```
+
+để gửi notification qua nhiều channel.
+
+## Composition Root
+
+Dependency graph được tạo thủ công trong composition layer.
+
+```text
+src/composition-root.ts
+src/composition/shared-dependencies.ts
+src/composition/user-dependencies.ts
+```
+
+`composition-root.ts` chỉ gom dependency:
+
+```ts
+const sharedDependencies = createSharedDependencies();
+const userDependencies = createUserDependencies(sharedDependencies);
+```
+
+`shared-dependencies.ts` tạo dependency dùng chung:
+
+- `ConsoleLogger`
+- `MockDatabase`
+- `MockRedisClient`
+- `disposables`
+
+`user-dependencies.ts` tạo dependency riêng của user module:
+
+- `InMemoryUserRepository`
+- `UserService`
+- `UserController`
+
+## DI Lifecycle Và Resource Cleanup
+
+Một số dependency chỉ là object trong memory, không cần cleanup thủ công.
+
+Một số dependency giữ resource bên ngoài, ví dụ:
+
+- Redis connection
+- Database connection pool
+- Message queue
+- Scheduler
+- HTTP client pool
+
+Những dependency này nên implement `Disposable`:
+
+```text
+src/infrastructure/lifecycle/Disposable.ts
+```
+
+```ts
+export interface Disposable {
+  dispose(): Promise<void>;
+}
+```
+
+Ví dụ Redis mock:
+
+```text
+src/infrastructure/cache/MockRedisClient.ts
+```
+
+`MockRedisClient` implement:
+
+```ts
+RedisClient
+Disposable
+```
+
+và có method:
+
+```ts
+dispose()
+```
+
+Các dependency cần cleanup được gom vào `disposables`:
+
+```text
+src/composition/shared-dependencies.ts
+```
+
+Khi Node.js process dừng, `server.ts` bắt signal:
+
+```text
+SIGINT
+SIGTERM
+```
+
+Xem tại:
+
+```text
+src/server.ts
+```
+
+Thứ tự shutdown:
+
+1. Dừng HTTP server để không nhận request mới.
+2. Gọi `disposeAll(disposables)`.
+3. Mỗi dependency tự cleanup qua `dispose()`.
+4. Process exit.
+
+## Cấu Trúc Chính
 
 ```text
 src/
 ├── application/
-│   ├── ports/
-│   │   ├── Logger.ts
-│   │   └── UserRepository.ts
-│   └── UserService.ts
-├── domain/
-│   └── User.ts
 ├── composition/
-│   ├── shared-dependencies.ts
-│   └── user-dependencies.ts
+├── domain/
+├── examples/
 ├── infrastructure/
-│   ├── cache/
-│   │   ├── RedisClient.ts
-│   │   └── MockRedisClient.ts
-│   ├── database/
-│   │   ├── Database.ts
-│   │   └── MockDatabase.ts
-│   ├── lifecycle/
-│   │   └── Disposable.ts
-│   ├── logging/
-│   │   └── ConsoleLogger.ts
-│   └── repositories/
-│       └── InMemoryUserRepository.ts
 ├── presentation/
-│   └── UserController.ts
 ├── composition-root.ts
 └── server.ts
 ```
 
-## Cài đặt và chạy
+## Chạy Dự Án
 
 ```bash
 npm install
@@ -99,7 +214,7 @@ http://localhost:3000
 
 ## API
 
-### Tạo user
+Tạo user:
 
 ```bash
 curl -X POST http://localhost:3000/users \
@@ -107,139 +222,15 @@ curl -X POST http://localhost:3000/users \
   -d '{"name":"Viet","email":"viet@example.com"}'
 ```
 
-### Lấy user
+Lấy user:
 
 ```bash
 curl http://localhost:3000/users/<USER_ID>
 ```
 
-## Chạy test
+## Kiểm Tra
 
 ```bash
+npm run build
 npm test
 ```
-
-## Điểm quan trọng nhất
-
-`UserService` không tự tạo repository:
-
-```ts
-// Không nên:
-this.userRepository = new InMemoryUserRepository();
-
-// Nên:
-constructor(
-  private readonly userRepository: UserRepository
-) {}
-```
-
-Dependency được chia theo module composition:
-
-```ts
-// composition/shared-dependencies.ts
-const logger = new ConsoleLogger();
-const database = new MockDatabase();
-const redisClient = new MockRedisClient();
-const disposables = [
-  redisClient
-];
-
-// composition/user-dependencies.ts
-const userRepository = new InMemoryUserRepository(database);
-
-const userService = new UserService(
-  userRepository,
-  logger
-);
-
-const userController = new UserController(userService);
-```
-
-`composition-root.ts` chỉ gom các nhóm dependency lại:
-
-```ts
-const sharedDependencies = createSharedDependencies();
-const userDependencies = createUserDependencies(sharedDependencies);
-
-return {
-  ...sharedDependencies,
-  ...userDependencies
-};
-```
-
-## Giải phóng dependency khi ứng dụng dừng
-
-Dependency như Redis, PostgreSQL, message queue, scheduler hoặc HTTP client pool thường giữ connection/resource bên ngoài.
-
-Dependency nào cần cleanup có thể implement `Disposable`:
-
-```ts
-export interface Disposable {
-  dispose(): Promise<void>;
-}
-```
-
-Ví dụ `MockRedisClient` có `dispose()`:
-
-```ts
-async dispose(): Promise<void> {
-  this.values.clear();
-  this.disposed = true;
-}
-```
-
-`shared-dependencies.ts` gom các dependency cần cleanup vào `disposables`:
-
-```ts
-const redisClient = new MockRedisClient();
-
-const disposables = [
-  redisClient
-];
-```
-
-`server.ts` bắt signal khi Node.js process dừng:
-
-```ts
-process.once("SIGINT", () => {
-  void shutdown("SIGINT");
-});
-
-process.once("SIGTERM", () => {
-  void shutdown("SIGTERM");
-});
-```
-
-Trong `shutdown()`, server ngừng nhận request mới rồi gọi:
-
-```ts
-await closeServer();
-await disposeAll(disposables);
-```
-
-## Vì sao interface được đặt trong application/ports?
-
-`UserService` là business logic cấp cao. Nó chỉ nên biết mình cần một repository có các hành vi:
-
-```ts
-create()
-findById()
-```
-
-Nó không cần biết repository lưu dữ liệu bằng:
-
-- Array trong memory
-- PostgreSQL
-- MongoDB
-- REST API
-- File JSON
-
-Đây là tư duy Dependency Inversion.
-
-## Bài tập mở rộng
-
-1. Tạo `PostgresUserRepository` nhưng không sửa `UserService`.
-2. Tạo `SilentLogger` để không in log khi test.
-3. Thêm `EmailService` và inject vào `UserService`.
-4. Thêm một `UserIdGenerator` thay vì gọi `randomUUID()` trực tiếp.
-5. Sau khi dependency graph lớn hơn, thử chuyển Composition Root sang InversifyJS.
