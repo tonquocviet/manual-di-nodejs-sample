@@ -4,8 +4,20 @@ import { disposeAll } from "./infrastructure/lifecycle/Disposable.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
+const isProduction = process.env.NODE_ENV === "production";
 
 app.use(express.json());
+
+if (!isProduction) {
+  app.use(
+    "/dev/api-tester",
+    express.static("public/dev-api-tester")
+  );
+
+  app.get("/", (_request, response) => {
+    response.redirect("/dev/api-tester");
+  });
+}
 
 const dependencies = createApplicationDependencies();
 const { disposables, logger, userController } = dependencies;
@@ -19,6 +31,12 @@ app.get("/users/:id", userController.getById);
 
 const server = app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
+
+  if (!isProduction) {
+    console.log(
+      `API tester is running at http://localhost:${port}/dev/api-tester`
+    );
+  }
 });
 
 let isShuttingDown = false;
@@ -38,7 +56,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     // Dừng Server trước để không nhận request mới
     await closeServer();
 
-    // Gọi disposeAll() gọi sau để đảm bảo khi đóng servẻ không còn request nào tới chúng
+    // Gọi disposeAll() sau để đảm bảo khi đóng server không còn request nào tới chúng.
     await disposeAll(disposables);
 
     logger.info("Application dependencies disposed");

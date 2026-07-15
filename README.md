@@ -212,6 +212,12 @@ Server chạy tại:
 http://localhost:3000
 ```
 
+API tester cho môi trường dev:
+
+```text
+http://localhost:3000/dev/api-tester
+```
+
 ## API
 
 Tạo user:

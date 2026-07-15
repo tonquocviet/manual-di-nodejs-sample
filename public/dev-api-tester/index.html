@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manual DI API Tester</title>
+    <link rel="stylesheet" href="/dev/api-tester/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>Manual DI API Tester</h1>
+          <p>Request UI cho môi trường dev.</p>
+        </div>
+        <div class="status" id="serverStatus">Checking...</div>
+      </header>
+
+      <section class="layout">
+        <aside class="panel quick-panel">
+          <h2>Quick Requests</h2>
+
+          <button class="action" id="healthButton" type="button">
+            GET /health
+          </button>
+
+          <form class="stack" id="createUserForm">
+            <label>
+              Name
+              <input
+                id="createName"
+                name="name"
+                autocomplete="name"
+                value="Viet"
+              />
+            </label>
+
+            <label>
+              Email
+              <input
+                id="createEmail"
+                name="email"
+                autocomplete="email"
+                value="viet@example.com"
+              />
+            </label>
+
+            <button class="action primary" type="submit">
+              POST /users
+            </button>
+          </form>
+
+          <form class="stack" id="getUserForm">
+            <label>
+              User ID
+              <input
+                id="getUserId"
+                name="id"
+                placeholder="Paste user id or create one first"
+              />
+            </label>
+
+            <button class="action" type="submit">
+              GET /users/:id
+            </button>
+          </form>
+        </aside>
+
+        <section class="panel request-panel">
+          <h2>Custom Request</h2>
+
+          <form id="customRequestForm" class="request-form">
+            <div class="request-line">
+              <select id="customMethod" aria-label="HTTP method">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="PATCH">PATCH</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+
+              <input
+                id="customPath"
+                aria-label="Request path"
+                value="/health"
+                placeholder="/users"
+              />
+
+              <button class="action primary" type="submit">
+                Send
+              </button>
+            </div>
+
+            <label>
+              JSON Body
+              <textarea
+                id="customBody"
+                spellcheck="false"
+                placeholder='{"name":"Viet","email":"viet@example.com"}'
+              ></textarea>
+            </label>
+          </form>
+
+          <div class="response-toolbar">
+            <div>
+              <span class="label">Status</span>
+              <strong id="responseStatus">-</strong>
+            </div>
+            <div>
+              <span class="label">Time</span>
+              <strong id="responseTime">-</strong>
+            </div>
+          </div>
+
+          <pre id="responseBody" class="response-body">{}</pre>
+        </section>
+      </section>
+    </main>
+
+    <script src="/dev/api-tester/app.js" type="module"></script>
+  </body>
+</html>
