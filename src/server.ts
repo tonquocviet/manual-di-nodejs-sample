@@ -24,11 +24,14 @@ const dependencies = createApplicationDependencies();
 const { container, disposables, logger, userController } = dependencies;
 
 app.use((_request, response, next) => {
-  // Mỗi request sẽ tạo một requestIdGenerator mới
-  const requestIdGenerator = container.resolve(TOKENS.requestIdGenerator);
-  const requestId = requestIdGenerator.generate();
+  // Mỗi HTTP request có một request scope riêng.
+  // Dependency scoped resolve nhiều lần trong cùng scope sẽ dùng lại cùng object.
+  const requestContainer = container.createScope();
+  const requestContext = requestContainer.resolve(TOKENS.requestContext);
 
-  response.setHeader("X-Request-Id", requestId);
+  response.locals.requestContainer = requestContainer;
+  response.locals.requestContext = requestContext;
+  response.setHeader("X-Request-Id", requestContext.requestId);
   next();
 });
 

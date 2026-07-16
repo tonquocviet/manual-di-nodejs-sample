@@ -4,6 +4,7 @@ import type { UserService } from "../application/UserService.js";
 import type { RedisClient } from "../infrastructure/cache/RedisClient.js";
 import type { Database } from "../infrastructure/database/Database.js";
 import type { Disposable } from "../infrastructure/lifecycle/Disposable.js";
+import type { RequestContext } from "../infrastructure/request/RequestContext.js";
 import type { RequestIdGenerator } from "../infrastructure/request/RequestIdGenerator.js";
 import type { InMemoryUserRepository } from "../infrastructure/repositories/InMemoryUserRepository.js";
 import type { UserController } from "../presentation/UserController.js";
@@ -20,6 +21,7 @@ export const TOKENS = {
   requestIdGenerator: createToken<RequestIdGenerator>(
     "RequestIdGenerator"
   ),
+  requestContext: createToken<RequestContext>("RequestContext"),
   userController: createToken<UserController>("UserController"),
   userRepository: createToken<UserRepository>("UserRepository"),
   userService: createToken<UserService>("UserService")

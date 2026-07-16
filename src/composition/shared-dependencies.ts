@@ -2,6 +2,7 @@ import type { Disposable } from "../infrastructure/lifecycle/Disposable.js";
 import { MockRedisClient } from "../infrastructure/cache/MockRedisClient.js";
 import { MockDatabase } from "../infrastructure/database/MockDatabase.js";
 import { ConsoleLogger } from "../infrastructure/logging/ConsoleLogger.js";
+import { RequestContext } from "../infrastructure/request/RequestContext.js";
 import { RequestIdGenerator } from "../infrastructure/request/RequestIdGenerator.js";
 import type { DiContainer } from "./DiContainer.js";
 import { TOKENS } from "./tokens.js";
@@ -20,6 +21,15 @@ export function registerSharedDependencies(
   container.registerTransient(
     TOKENS.requestIdGenerator,
     () => new RequestIdGenerator()
+  );
+  // Mỗi HTTP request sẽ tạo một scope riêng.
+  // Trong cùng request scope, RequestContext resolve nhiều lần vẫn là cùng object.
+  container.registerScoped(
+    TOKENS.requestContext,
+    (container) =>
+      new RequestContext(
+        container.resolve(TOKENS.requestIdGenerator).generate()
+      )
   );
 
   container.registerSingleton(TOKENS.disposables, (container) => {

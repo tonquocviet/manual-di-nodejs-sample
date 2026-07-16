@@ -136,8 +136,10 @@ Container hỗ trợ:
 
 - `registerSingleton()`
 - `registerTransient()`
+- `registerScoped()`
 - `registerValue()`
 - `resolve()`
+- `createScope()`
 
 Ví dụ ý tưởng:
 
@@ -153,6 +155,7 @@ const logger = container.resolve(TOKENS.logger);
 TOKENS.logger
 TOKENS.database
 TOKENS.redisClient
+TOKENS.requestContext
 TOKENS.userRepository
 TOKENS.userService
 TOKENS.userController
@@ -189,6 +192,7 @@ const userController = container.resolve(TOKENS.userController);
 - `MockDatabase`
 - `MockRedisClient`
 - `RequestIdGenerator`
+- `RequestContext`
 - `disposables`
 
 `RequestIdGenerator` dùng `registerTransient()`:
@@ -200,13 +204,43 @@ container.registerTransient(
 );
 ```
 
-Trong `server.ts`, mỗi HTTP request resolve một generator mới và set header:
+`RequestIdGenerator` được dùng bên trong factory của `RequestContext` để tạo request id:
 
 ```ts
-const requestIdGenerator = container.resolve(TOKENS.requestIdGenerator);
-const requestId = requestIdGenerator.generate();
+container.resolve(TOKENS.requestIdGenerator).generate()
+```
 
-response.setHeader("X-Request-Id", requestId);
+`RequestContext` dùng `registerScoped()`:
+
+```ts
+container.registerScoped(
+  TOKENS.requestContext,
+  (container) =>
+    new RequestContext(
+      container.resolve(TOKENS.requestIdGenerator).generate()
+    )
+);
+```
+
+Trong `server.ts`, mỗi HTTP request tạo một scope riêng:
+
+```ts
+const requestContainer = container.createScope();
+const requestContext = requestContainer.resolve(TOKENS.requestContext);
+
+response.locals.requestContainer = requestContainer;
+response.locals.requestContext = requestContext;
+response.setHeader("X-Request-Id", requestContext.requestId);
+```
+
+Ý nghĩa:
+
+```text
+Cùng một request:
+  resolve RequestContext nhiều lần -> cùng object
+
+Request khác:
+  resolve RequestContext -> object khác
 ```
 
 `user-dependencies.ts` register dependency riêng của user module:

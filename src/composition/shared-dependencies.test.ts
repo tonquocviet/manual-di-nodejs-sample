@@ -17,4 +17,25 @@ describe("registerSharedDependencies", () => {
       secondGenerator.instanceId
     );
   });
+
+  it("registers RequestContext as request scoped", () => {
+    const container = new DiContainer();
+
+    registerSharedDependencies(container);
+
+    const firstRequestScope = container.createScope();
+    const secondRequestScope = container.createScope();
+
+    const firstContext = firstRequestScope.resolve(TOKENS.requestContext);
+    const sameFirstContext = firstRequestScope.resolve(
+      TOKENS.requestContext
+    );
+    const secondContext = secondRequestScope.resolve(
+      TOKENS.requestContext
+    );
+
+    expect(firstContext).toBe(sameFirstContext);
+    expect(firstContext).not.toBe(secondContext);
+    expect(firstContext.requestId).not.toBe(secondContext.requestId);
+  });
 });
