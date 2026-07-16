@@ -1,6 +1,6 @@
 # Manual DI Node.js Sample
 
-Minh họa cách dùng Dependency Injection thủ công trong Node.js + TypeScript, không dùng DI container.
+Minh họa cách dùng Dependency Injection trong Node.js + TypeScript, có DI container tự viết và không dùng thư viện DI container như InversifyJS.
 
 ## Những gì đã thể hiện
 
@@ -121,38 +121,102 @@ Composition lắp decorator tại:
 src/composition/user-dependencies.ts
 ```
 
-### 7. Composition Root
+### 7. DI Container Tự Viết
 
-Dependency graph được tạo thủ công trong composition layer.
+Project có một DI container nhỏ tự viết, không dùng thư viện bên ngoài.
+
+Xem tại:
+
+```text
+src/composition/DiContainer.ts
+src/composition/tokens.ts
+```
+
+Container hỗ trợ:
+
+- `registerSingleton()`
+- `registerTransient()`
+- `registerValue()`
+- `resolve()`
+
+Ví dụ ý tưởng:
+
+```ts
+container.registerSingleton(TOKENS.logger, () => new ConsoleLogger());
+
+const logger = container.resolve(TOKENS.logger);
+```
+
+`tokens.ts` định nghĩa token cho từng dependency:
+
+```ts
+TOKENS.logger
+TOKENS.database
+TOKENS.redisClient
+TOKENS.userRepository
+TOKENS.userService
+TOKENS.userController
+```
+
+Container cần token để biết dependency nào đang được register/resolve.
+
+### 8. Composition Root
+
+Dependency graph được đăng ký thủ công vào DI container.
 
 ```text
 src/composition-root.ts
+src/composition/DiContainer.ts
+src/composition/tokens.ts
 src/composition/shared-dependencies.ts
 src/composition/user-dependencies.ts
 ```
 
-`composition-root.ts` chỉ gom dependency:
+`composition-root.ts` tạo container, đăng ký module, rồi resolve dependency cần dùng:
 
 ```ts
-const sharedDependencies = createSharedDependencies();
-const userDependencies = createUserDependencies(sharedDependencies);
+const container = new DiContainer();
+
+registerSharedDependencies(container);
+registerUserDependencies(container);
+
+const userController = container.resolve(TOKENS.userController);
 ```
 
-`shared-dependencies.ts` tạo dependency dùng chung:
+`shared-dependencies.ts` register dependency dùng chung:
 
 - `ConsoleLogger`
 - `MockDatabase`
 - `MockRedisClient`
+- `RequestIdGenerator`
 - `disposables`
 
-`user-dependencies.ts` tạo dependency riêng của user module:
+`RequestIdGenerator` dùng `registerTransient()`:
+
+```ts
+container.registerTransient(
+  TOKENS.requestIdGenerator,
+  () => new RequestIdGenerator()
+);
+```
+
+Trong `server.ts`, mỗi HTTP request resolve một generator mới và set header:
+
+```ts
+const requestIdGenerator = container.resolve(TOKENS.requestIdGenerator);
+const requestId = requestIdGenerator.generate();
+
+response.setHeader("X-Request-Id", requestId);
+```
+
+`user-dependencies.ts` register dependency riêng của user module:
 
 - `InMemoryUserRepository`
 - `CachedUserRepository`
 - `UserService`
 - `UserController`
 
-### 8. DI Lifecycle Và Resource Cleanup
+### 9. DI Lifecycle Và Resource Cleanup
 
 Một số dependency chỉ là object trong memory, không cần cleanup thủ công.
 

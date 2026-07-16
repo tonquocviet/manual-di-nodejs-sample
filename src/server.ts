@@ -1,5 +1,6 @@
 import express from "express";
 import { createApplicationDependencies } from "./composition-root.js";
+import { TOKENS } from "./composition/tokens.js";
 import { disposeAll } from "./infrastructure/lifecycle/Disposable.js";
 
 const app = express();
@@ -20,7 +21,16 @@ if (!isProduction) {
 }
 
 const dependencies = createApplicationDependencies();
-const { disposables, logger, userController } = dependencies;
+const { container, disposables, logger, userController } = dependencies;
+
+app.use((_request, response, next) => {
+  // Mỗi request sẽ tạo một requestIdGenerator mới
+  const requestIdGenerator = container.resolve(TOKENS.requestIdGenerator);
+  const requestId = requestIdGenerator.generate();
+
+  response.setHeader("X-Request-Id", requestId);
+  next();
+});
 
 app.get("/health", (_request, response) => {
   response.status(200).json({ status: "ok" });

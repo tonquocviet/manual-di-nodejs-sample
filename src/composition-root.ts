@@ -1,5 +1,7 @@
-import { createSharedDependencies } from "./composition/shared-dependencies.js";
-import { createUserDependencies } from "./composition/user-dependencies.js";
+import { DiContainer } from "./composition/DiContainer.js";
+import { registerSharedDependencies } from "./composition/shared-dependencies.js";
+import { TOKENS } from "./composition/tokens.js";
+import { registerUserDependencies } from "./composition/user-dependencies.js";
 
 /**
  * Composition Root
@@ -10,11 +12,24 @@ import { createUserDependencies } from "./composition/user-dependencies.js";
  * - Xây dựng object graph của ứng dụng
  */
 export function createApplicationDependencies() {
-  const sharedDependencies = createSharedDependencies();
-  const userDependencies = createUserDependencies(sharedDependencies);
+  const container = new DiContainer();
+
+  // Đăng kí dependency
+  registerSharedDependencies(container);
+  registerUserDependencies(container);
 
   return {
-    ...sharedDependencies,
-    ...userDependencies
+    container,
+    // Lấy các dependency từ container
+    // Nếu là transient thì sẽ tạo object mới mỗi lần gọi
+    // Nếu là singleton thì sẽ trả về object đã tạo
+    database: container.resolve(TOKENS.database),
+    disposables: container.resolve(TOKENS.disposables),
+    innerUserRepository: container.resolve(TOKENS.innerUserRepository),
+    logger: container.resolve(TOKENS.logger),
+    redisClient: container.resolve(TOKENS.redisClient),
+    userController: container.resolve(TOKENS.userController),
+    userRepository: container.resolve(TOKENS.userRepository),
+    userService: container.resolve(TOKENS.userService)
   };
 }
